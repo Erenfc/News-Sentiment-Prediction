@@ -1,8 +1,16 @@
-import os
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
 from textblob import TextBlob
+from twilio.rest import Client
+import schedule
+import time
+
+account_sid = 'AC85c774794f67fc574ce2541afba03328'
+auth_token = '51a2b5fe9d11d00f28ce30240d5ef6ae'
+from_num = '+13345184077',
+to_num = '+917305607997'
+
+client = Client(account_sid, auth_token)
 
 def get_sentiment(text):
     analysis = TextBlob(text)
@@ -52,28 +60,19 @@ def scrape_news(url):
 
         overall_sentiment = max(sentiment_counts, key=sentiment_counts.get)
 
-        print(f"URL: {url}")
-        print("Sentiment Counts:")
+        message = f"URL: {url}\nSentiment Counts:\n"
         for sentiment, count in sentiment_counts.items():
-            print(f"{sentiment}: {count}")
+            message += f"{sentiment}: {count}\n"
+        message += f"Overall Sentiment: {overall_sentiment}"
 
-        print(f"Overall Sentiment: {overall_sentiment}")
-        print()
+        client.messages.create(
+            to = to_num,
+            from_ = from_num,
+            body=message
+        )
 
-        # img_tags = soup.find_all('img')        
-        # for img_tag in img_tags:
-        #     img_url = img_tag.get('src')
-        #     if img_url:
-        #         img_filename = os.path.basename(urlparse(img_url).path)
-
-        #         img_response = requests.get(img_url)
-        #         if img_response.status_code == 200:
-        #             with open(img_filename, 'wb') as f:
-        #                 f.write(img_response.content)
-        #             print(f"Saved {img_filename} from {url}")
-        #         else:
-        #             print(f"Failed to download image {img_url} from {url}")
-
+        print(f"Sentiment analysis sent via SMS for {url}")
+        print("-" * 100)
     else:
         print(f"Failed to retrieve content from {url}")
 
@@ -89,5 +88,8 @@ urls = [
 ]
 
 for url in urls:
-    scrape_news(url)
-    print("-" * 100)
+    schedule.every().day.at("15:07").do(scrape_news, url=url)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
